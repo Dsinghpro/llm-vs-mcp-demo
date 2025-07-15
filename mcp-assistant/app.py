@@ -1,15 +1,34 @@
 import streamlit as st
 import asyncio
-from openai_client import call_openai
+import re
 
-st.set_page_config(page_title="OpenAI MCP Assistant", layout="centered")
-st.title("🧠 OpenAI Assistant (MCP Style)")
+from gemini_client import call_gemini
+from mcp_tools import get_patient_info
 
-question = st.text_area("Ask something (e.g., 'Get info for patient P123')", height=150)
+st.set_page_config(page_title="Gemini vs MCP", layout="centered")
+st.title("🧠 Gemini Assistant (MCP Simulated)")
+
+question = st.text_area("Ask a question (e.g., 'Get info for patient P123')", height=150)
 submit = st.button("Ask")
+
+# Intent Router
+def route_query(text: str):
+    match = re.search(r"patient\s*(P\d+)", text, re.IGNORECASE)
+    if match:
+        return "mcp", match.group(1)
+    return "gemini", None
 
 if submit and question.strip():
     with st.spinner("Thinking..."):
-        response = call_openai(question)
-        st.markdown("### 🤖 OpenAI says:")
+        route, patient_id = route_query(question)
+
+        if route == "mcp":
+            # Call simulated MCP tool
+            response = asyncio.run(get_patient_info(patient_id))
+            st.markdown("### 🛠️ MCP Tool Response")
+        else:
+            # Default to Gemini
+            response = call_gemini(question)
+            st.markdown("### 🤖 Gemini Response")
+
         st.success(response)
